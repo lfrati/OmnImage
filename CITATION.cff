@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this dataset, please cite it as below."
+authors:
+- family-names: "Frati"
+  given-names: "Lapo"
+  orcid: "https://orcid.org/0000-0002-9839-1163"
+- family-names: "Cheney"
+  given-names: "Nicholas"
+  orcid: "https://orcid.org/0000-0002-7140-2213"
+title: "OmnImage: many-tasks few-shots dataset of natural images."
+version: 2.0.4
+date-released: 2021-12-13
+url: "https://github.com/lfrati/OmnImage"
