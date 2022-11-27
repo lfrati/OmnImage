@@ -2,7 +2,7 @@
 
 # OmnImage
 
-The [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw353np05s?usp=sharing) dataset contains a 1000 classes with 20|100 [images](assets/overview_consistent.png) each, downsized to 32x32|64x64|84x84 pixels.
+The [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw353np05s?usp=sharing) dataset contains a 1000 classes with 20|100 [images](https://drive.google.com/file/d/1rR7Xh4sxXVY9im_DrjZwEf2oydmx8YWL/view) each, downsized to 32x32|64x64|84x84 pixels.
 
 # Why?
 
@@ -17,3 +17,10 @@ The [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw
 However, while ImageNet contains natural images MNIST and Omniglot only contain examples of handwritten digits/characters.
 
 [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw353np05s?usp=sharing) is a class-consistent subset of [ImageNet](https://www.image-net.org/) images that mirrors the shallow-and-wide dataset shape of [Omniglot](https://github.com/brendenlake/omniglot).
+
+What does consistent mean?
+While characters are fairly easy to "characterize" (minus some bad handwriting) natural images can vary wildly. We try to reduce the noise in our dataset by extracting the 20|100 subset of each class that is most similar to each other.
+
+We do this by using [evolutionary pairwise cosines subset minimization](https://github.com/lfrati/subpair). For each of the 1000 classes we compute the pairwise cosine distance between all the the examples (features extracted using a pretrained VGG model). We then evolve the minimal subset for each class and add those examples to our dataset.
+
+See [this link](https://drive.google.com/file/d/1rR7Xh4sxXVY9im_DrjZwEf2oydmx8YWL/view) for an overview of the 20000 version.
