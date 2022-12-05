@@ -19,7 +19,7 @@ def test_download(samples):
 def test_memmap(samples):
     print()
     DATA_LOC = f"{DOWNLOAD_LOC}/OmnImage84_{samples}"
-    MMAP_FILE = f"{DOWNLOAD_LOC}mmap_OmnImage84_{samples}.dat"
+    MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{samples}.dat"
     dataset = OmnImageDataset(DATA_LOC)
     store_memmap(MMAP_FILE, dataset)
     retrieved_data = retrieve_memmap(MMAP_FILE)
@@ -36,8 +36,7 @@ def test_memmap(samples):
 
 @pytest.mark.parametrize("samples", [20, 100])
 def test_memmap_dataset(samples):
-    MMAP_FILE = f"{DOWNLOAD_LOC}mmap_OmnImage84_{samples}.dat"
-    mmdataset = MemmapDataset(MMAP_FILE)
+    mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
     print()
     print(mmdataset)
     assert len(mmdataset) == samples * 1_000
@@ -49,8 +48,7 @@ def test_memmap_dataset(samples):
 
 @pytest.mark.parametrize("samples", [20, 100])
 def test_split(samples):
-    MMAP_FILE = f"{DOWNLOAD_LOC}mmap_OmnImage84_{samples}.dat"
-    mmdataset = MemmapDataset(MMAP_FILE)
+    mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
     print(len(mmdataset))
     p = 0.8
     train, test, _, _ = split(mmdataset, p=p, samples=samples, seed=4)
@@ -62,8 +60,7 @@ def test_split(samples):
 
 @pytest.mark.parametrize("samples", [20, 100])
 def test_sampler_class(samples):
-    MMAP_FILE = f"{DOWNLOAD_LOC}mmap_OmnImage84_{samples}.dat"
-    mmdataset = MemmapDataset(MMAP_FILE)
+    mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
     sampler = Sampler(mmdataset)
     print(sampler)
 
@@ -78,8 +75,7 @@ def test_sampler_class(samples):
 
 @pytest.mark.parametrize("samples", [20, 100])
 def test_sampler_random(samples):
-    MMAP_FILE = f"{DOWNLOAD_LOC}mmap_OmnImage84_{samples}.dat"
-    mmdataset = MemmapDataset(MMAP_FILE)
+    mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
 
     sampler = Sampler(mmdataset)
     print(sampler)

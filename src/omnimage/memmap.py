@@ -60,11 +60,12 @@ def retrieve_memmap(path: str) -> NDArrayNCHW:
 
 
 class MemmapDataset(Dataset):
-    def __init__(self, path: str):
+    def __init__(self, folder: str, samples=20):
 
         # means and stds are computed on the 100 verion
         self.means = torch.tensor([0.4875, 0.4667, 0.4110])
         self.stds = torch.tensor([0.2607, 0.2528, 0.2678])
+        path = f"{folder}/mmap_OmnImage84_{samples}.dat"
 
         retrieved_float_shape = np.memmap(path, dtype="float32", mode="r+")[:4]
         self.shape = tuple(
