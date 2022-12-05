@@ -91,17 +91,12 @@ class OmnImageDataset(Dataset):
         return f"{name}\n    images: {nimages:_}\n   classes: {nclasses:_}"
 
 
-def split(dataset, p=0.8, samples=20, verbose=False, seed=None):
+def split(dataset, p=0.8, samples=20, seed=None):
     # randomly split the dataset between train/test
     # e.g. samples=3, nclasses=100, p=0.8
-    # labels is a list of ints #[]
-    if verbose:
-        print("Preparing splits...")
-        range_fun = trange
-    else:
-        range_fun = range
+    # labels is a list of ints
     rng = random.Random(seed)
-    labels = [dataset[i][1] for i in range_fun(len(dataset))]
+    labels = [dataset[i][1] for i in trange(len(dataset))]
     assert is_sorted(labels)
     classes = list(set(labels))  # [0,1,2,...,100]
     ntrain = int(len(classes) * p)  # 100*0.8 = 80
@@ -114,8 +109,6 @@ def split(dataset, p=0.8, samples=20, verbose=False, seed=None):
     test_idxs = [
         (i * samples) + j for i in test_classes for j in range(samples)
     ]  # [3,4,5,6,7,8,5,5,5,...,300]
-    if verbose:
-        print(f"Splits ready: Train:{len(train_idxs)} Test:{len(test_idxs)}")
     return (
         Subset(dataset, train_idxs),
         Subset(dataset, test_idxs),
@@ -136,19 +129,16 @@ class Sampler:
         self.samples = np.arange(len(dataset))
         self.class_idxs = self.samples.reshape(-1, nsamples_per_class)
         self.classes = np.arange(self.class_idxs.shape[0])
-        self.balanced = np.copy(self.class_idxs).T
-        self.rng = np.random.default_rng()
-        self.rng.permuted(self.balanced, axis=0, out=self.balanced)
-        self.slice = 0
 
     def __repr__(self):
-        return f"Sampler: {len(self.dataset)} SAMPLES, {len(self.classes)} CLASSES, DEVICE={self.device}"
+        return f"Sampler: {len(self.dataset)} SAMPLES, {len(self.classes)} CLASSES"
 
     def get(self, idxs):
         # get batch of ims,labels from a list of indices
         ims = [self.dataset[i][0] for i in idxs]
         lbs = [self.dataset[i][1] for i in idxs]
-        return torch.stack(ims), torch.stack(lbs)
+        # return torch.stack(ims), torch.stack(lbs)
+        return torch.stack(ims), torch.tensor(lbs)
 
     def sample_class(self, N=20):
         # get N ims of a single class, used for inner loop
@@ -160,25 +150,3 @@ class Sampler:
         # get N at random from the whole dataset, used for the outer loop
         samples = np.random.choice(self.samples, size=N, replace=False)
         return self.get(samples)
-
-    def sample(self, inner_size=20, outer_size=64, expand=True):
-        # get 20 ims for the inner and 20+64 ims for the outer
-        inner_ims, inner_labels = self.sample_class(inner_size)
-        outer_ims, outer_labels = self.sample_random(outer_size)
-        outer_ims = torch.cat([inner_ims, outer_ims])
-        outer_labels = torch.cat([inner_labels, outer_labels])
-        if expand:
-            inner_ims = inner_ims.unsqueeze(1)
-        return inner_ims, inner_labels, outer_ims, outer_labels
-
-    def sample_balanced(self):
-        # get a sample with exactly 1 example from every class
-        idxs = self.balanced[self.slice]
-        samples = self.get(idxs)
-        if self.slice >= len(self.balanced) - 1:
-            self.slice = 0
-            self.rng.permuted(self.balanced, axis=0, out=self.balanced)
-            # NOTE: this will change idxs, use them before shuffling
-        else:
-            self.slice += 1
-        return samples

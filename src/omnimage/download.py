@@ -193,12 +193,12 @@ versions = {
     20: {
         "url": "https://drive.google.com/file/d/12UU2yEf6nZ7HzLluALyFxZmPI5tN_iAb",
         "filename": "OmnImage84_20.zip",
-        "md5": "0048ccc9b9a186d6428ac3d060420ffb",
+        "md5": "30aa0b55fc6b3bccd06aaa6615661ee8",
     },
     100: {
         "url": "https://drive.google.com/file/d/1Ut_uITA2Y87Z6zHyGMMAbYBJd0MiNL8W",
         "filename": "OmnImage84_100.zip",
-        "md5": "7ea589a260e710fde0e231c6dc90b88e",
+        "md5": "3869650152622568a7356146307c414e",
     },
 }
 
