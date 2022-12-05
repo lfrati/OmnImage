@@ -2,12 +2,16 @@ import mimetypes
 import os
 from pathlib import Path
 import random
+
+from tqdm import trange
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset, Subset
 from torchvision.io import read_image
 from torchvision.transforms import Normalize
-from tqdm import trange
+
+from .download import download_dataset
 
 
 def get_images(path):
@@ -30,7 +34,15 @@ def get_images(path):
 
 
 class OmnImageDataset(Dataset):
-    def __init__(self, img_dir, normalize=True, device="cpu", memoize=False):
+    def __init__(
+        self, data_dir, samples=20, normalize=True, device="cpu", memoize=False
+    ):
+        self.data_dir = data_dir
+        self.img_dir = f"{data_dir}/OmnImage84_{samples}"
+        if not Path(self.img_dir).exists():
+            download_dataset(samples=samples, download_root=data_dir)
+        else:
+            print(f"Found {self.img_dir}. Skipping download.")
         get_class = lambda x: x.parent.name
         self.normalize = normalize
         # means and std computed from the 100 version
@@ -38,7 +50,6 @@ class OmnImageDataset(Dataset):
             mean=[0.48751324, 0.46667117, 0.41095525],
             std=[0.26073888, 0.2528451, 0.2677635],
         )
-        self.img_dir = img_dir
         self.images = sorted(get_images(self.img_dir))
         self.classes = [get_class(im) for im in self.images]
         self.uniq_classes = list(sorted(set(self.classes)))

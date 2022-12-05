@@ -1,8 +1,11 @@
+from pathlib import Path
+
+from tqdm import trange
+
+from einops import rearrange
+import numpy as np
 import torch
 from torch.utils.data import Dataset
-import numpy as np
-from einops import rearrange
-from tqdm import trange
 
 """
 We are going to store the dataset shape in the memorymapped file.
@@ -28,6 +31,9 @@ NDArrayNCHW = "np.ndarray[FourD, CHW]"
 
 
 def store_memmap(path: str, dataset: Dataset) -> None:
+    if Path(path).exists():
+        print(f"Found {path}. Skipping store_memmap.")
+        return
     N = len(dataset)
     im, _ = dataset[0]
     im_shape = im.shape

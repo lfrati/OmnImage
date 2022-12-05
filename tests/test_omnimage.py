@@ -7,10 +7,7 @@ DOWNLOAD_LOC = "./data"
 
 @pytest.mark.parametrize("samples", [20, 100])
 def test_download(samples):
-    print()
-    DATA_LOC = f"{DOWNLOAD_LOC}/OmnImage84_{samples}"
-    download_dataset(samples=samples, download_root="data")
-    dataset = OmnImageDataset(DATA_LOC)
+    dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=samples)
     print(dataset)
     assert len(dataset) == samples * 1_000
 
@@ -18,9 +15,8 @@ def test_download(samples):
 @pytest.mark.parametrize("samples", [20, 100])
 def test_memmap(samples):
     print()
-    DATA_LOC = f"{DOWNLOAD_LOC}/OmnImage84_{samples}"
     MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{samples}.dat"
-    dataset = OmnImageDataset(DATA_LOC)
+    dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=samples)
     store_memmap(MMAP_FILE, dataset)
     retrieved_data = retrieve_memmap(MMAP_FILE)
 
