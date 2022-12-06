@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision.models import vgg19_bn
 from tqdm import tqdm
 
-from utils import paths2tensors, read_folder, model2name
+from utils import paths2tensors, read_folder, model2name, paths2tensors_par
 
 
 def hook_it_up(net, layer):
@@ -36,9 +36,9 @@ def store_activations(net, name, classes, device, to_hook=None):
         fname = folder / (cls.name + ".npy")
         if not fname.exists():
             ims = read_folder(cls)
-            inps = paths2tensors(ims, size=84).to(device)
+            inps = paths2tensors_par(ims, size=84).to(device)
             feats = forward(inps).detach().cpu().numpy()
-            # np.save(fname, feats)
+            np.save(fname, feats)
         else:
             print(fname, "exists")
 

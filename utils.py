@@ -1,14 +1,16 @@
 import mimetypes
 import os
+from functools import partial
 from hashlib import blake2b
+from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional
 
 import cv2
+import numpy as np
+import torch
 from numba import i8, u8
 from PIL import Image
-
-import torch
 
 
 def model2name(net):
@@ -71,7 +73,7 @@ def load(im: Path) -> u8[:, :, :]:
     )
 
 
-def load_resize(im: Path, size: i8 = 64) -> u8[:, :]:
+def load_resize(im: Path, size: i8 = 84) -> u8[:, :]:
     # ugly AF but fast
     # NOTE: cv2 reads images as BGR!
     return cv2.resize(
@@ -98,3 +100,15 @@ def paths2tensors(paths: List[Path], size: Optional[i8] = None):
             ]
         )
     return tens
+
+
+def paths2tensors_par(
+    paths: List[str],
+    nworkers: Optional[int] = None,
+    size: u8 = 84,
+):
+    with Pool(nworkers) as p:
+        f = partial(load_resize, size=size)
+        images = p.map(f, paths)
+        tensors = torch.from_numpy(np.stack(images).transpose(0, 3, 1, 2)) / 255
+        return tensors
