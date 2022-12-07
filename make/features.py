@@ -68,5 +68,5 @@ if __name__ == "__main__":
     net = vgg19_bn(pretrained=True, progress=True)
     to_hook = net.classifier[3]
     name = "output/feats"
-    classes = read_folder(args.dir)
+    classes = read_folder(args.ims)
     store_activations(net, name, classes, device=args.device, to_hook=to_hook)

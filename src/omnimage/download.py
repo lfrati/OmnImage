@@ -189,7 +189,7 @@ def _extract_zip(from_path: str, to_path: str) -> None:
         zip.extractall(to_path)
 
 
-versions = {
+files = {
     20: {
         "url": "https://drive.google.com/file/d/12UU2yEf6nZ7HzLluALyFxZmPI5tN_iAb",
         "filename": "OmnImage84_20.zip",
@@ -200,6 +200,11 @@ versions = {
         "filename": "OmnImage84_100.zip",
         "md5": "3869650152622568a7356146307c414e",
     },
+    "sample": {
+        "url": "https://drive.google.com/file/d/1TZoD4b48dgrX3cisKKlYJqBba0zn2V6v",
+        "filename": "ImagenetSample.zip",
+        "md5": "971eddceacb7e929cfbe55d041e9f794",
+    },
 }
 
 
@@ -207,10 +212,10 @@ def download_dataset(
     samples: int,
     download_root: str,
     extract_root: Optional[str] = None,
-    remove_finished: bool = False,
+    remove_finished: bool = True,
 ) -> None:
 
-    info = versions[samples]
+    info = files[samples]
     url = info["url"]
     filename = info["filename"]
     md5 = info["md5"]
@@ -229,3 +234,6 @@ def download_dataset(
     _extract_zip(archive, extract_root)
     if remove_finished:
         os.remove(archive)
+
+
+download_dataset("sample", download_root="test")
