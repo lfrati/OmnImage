@@ -54,7 +54,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--dir", type=str, default="imagenet", help="path to folder w/ imagenet data"
+        "--ims", type=str, default="imagenet", help="path to folder w/ imagenet data"
     )
     parser.add_argument(
         "--device",
