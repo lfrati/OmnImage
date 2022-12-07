@@ -1,12 +1,12 @@
+import argparse
 from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 from torchvision.models import vgg19_bn
 from tqdm import tqdm
 
-from utils import paths2tensors, read_folder, model2name, paths2tensors_par
+from utils import paths2tensors_par, read_folder
 
 
 def hook_it_up(net, layer):
@@ -31,7 +31,7 @@ def store_activations(net, name, classes, device, to_hook=None):
     folder = Path(name)
     folder.mkdir(parents=True, exist_ok=True)
     net = net.to(device)
-    forward, handle = hook_it_up(net, to_hook)
+    forward, _ = hook_it_up(net, to_hook)
     for cls in tqdm(classes):
         fname = folder / (cls.name + ".npy")
         if not fname.exists():
@@ -46,10 +46,7 @@ def store_activations(net, name, classes, device, to_hook=None):
 #%%
 
 
-if __name__ == "__main__":
-
-    from torchvision.models import vgg19_bn
-    import argparse
+def main():
 
     parser = argparse.ArgumentParser()
 
@@ -70,3 +67,7 @@ if __name__ == "__main__":
     name = "output/feats"
     classes = read_folder(args.ims)
     store_activations(net, name, classes, device=args.device, to_hook=to_hook)
+
+
+if __name__ == "__main__":
+    main()

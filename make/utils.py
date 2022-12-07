@@ -103,7 +103,7 @@ def paths2tensors(paths: List[Path], size: Optional[i8] = None):
 
 
 def paths2tensors_par(
-    paths: List[str],
+    paths: List[Path],
     nworkers: Optional[int] = None,
     size: u8 = 84,
 ):

@@ -4,11 +4,12 @@ from pathlib import Path
 import pickle
 
 import numpy as np
+
 from subpair import extract, pairwise_cosine
 from utils import read_folder
 
-if __name__ == "__main__":
 
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -37,7 +38,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print(args)
-    feats_folder = Path(args.feats)
     im_folder = Path(args.ims)
     hist_folder = Path("output/hist")
     hist_folder.mkdir(exist_ok=True)
@@ -62,3 +62,7 @@ if __name__ == "__main__":
                 output_file.write(img + "\n")
             with open(hist_folder / f"{cls}.pkl", "wb") as p:
                 pickle.dump((best, stats), p)
+
+
+if __name__ == "__main__":
+    main()

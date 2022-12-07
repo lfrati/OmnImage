@@ -1,5 +1,6 @@
-import re
+import argparse
 from pathlib import Path
+import re
 
 import cv2
 from tqdm import tqdm
@@ -44,8 +45,8 @@ def generate(im_path, output_folder, imagenet_dir="imagenet", im_size=84):
 
 #%%
 
-if __name__ == "__main__":
-    import argparse
+
+def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -89,3 +90,7 @@ if __name__ == "__main__":
             imagenet_dir=args.ims,
             im_size=args.imsize,
         )
+
+
+if __name__ == "__main__":
+    main()
