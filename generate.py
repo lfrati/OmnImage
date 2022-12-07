@@ -49,6 +49,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--ims",
+        type=str,
+        help="list of paths in the subset",
+    )
+    parser.add_argument(
         "--subset",
         type=str,
         default="OmnImage_20.txt",
@@ -63,8 +68,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
+    filename = Path(args.subset).name
     pattern = r"[./]?OmnImage_(\d+).txt"
-    match = re.match(pattern, args.subset)
+    match = re.match(pattern, filename)
     if match is None:
         raise RuntimeError(
             f"Wrong subset file format.\n Got:      {args.subset}\n Expected: {pattern}"
@@ -75,11 +81,11 @@ if __name__ == "__main__":
         data = f.read().splitlines()
         data = [Path(p) for p in data]
     print("Subset size:", len(data))
-    output_folder = f"OmnImage{args.imsize}_{N}"
+    output_folder = f"output/OmnImage{args.imsize}_{N}"
     for im_path in tqdm(data):
         generate(
             im_path=im_path,
             output_folder=output_folder,
-            imagenet_dir="imagenet",
+            imagenet_dir=args.ims,
             im_size=args.imsize,
         )

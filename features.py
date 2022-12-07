@@ -67,6 +67,6 @@ if __name__ == "__main__":
 
     net = vgg19_bn(pretrained=True, progress=True)
     to_hook = net.classifier[3]
-    name = model2name(net)  # torchvision.models.vgg_ce631fc9ca0278a2
+    name = "output/feats"
     classes = read_folder(args.dir)
     store_activations(net, name, classes, device=args.device, to_hook=to_hook)

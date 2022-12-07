@@ -12,7 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 keywords = ["dataset", "continual-learning"]
-dependencies = ["tqdm", "einops", "torch", "torchvision", "numpy"]
+dependencies = ["tqdm", "einops", "torch", "torchvision", "numpy", "opencv-python", "subpair"]
 requires-python = ">=3.9"
 
     [project.optional-dependencies]
