@@ -1,8 +1,8 @@
 ![](assets/banner.png)
 
-# OmnImage
+# OmnImage ![CI](https://github.com/lfrati/OmnImage/actions/workflows/tests.yml/badge.svg)
 
-The [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw353np05s?usp=sharing) dataset contains a 1000 classes with 20|100 [images](https://drive.google.com/file/d/1rR7Xh4sxXVY9im_DrjZwEf2oydmx8YWL/view) each, downsized to 32x32|64x64|84x84 pixels.
+The [OmniImage](https://drive.google.com/drive/folders/1tpm4LY3gEUlpK7h54uHqKOcw353np05s?usp=sharing) dataset contains a 1000 classes with 20|100 [images](https://drive.google.com/file/d/1rR7Xh4sxXVY9im_DrjZwEf2oydmx8YWL/view) each, downsized to 84x84 pixels.
 
 # Why?
 
