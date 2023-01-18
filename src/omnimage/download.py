@@ -234,6 +234,3 @@ def download_dataset(
     _extract_zip(archive, extract_root)
     if remove_finished:
         os.remove(archive)
-
-
-download_dataset("sample", download_root="test")
