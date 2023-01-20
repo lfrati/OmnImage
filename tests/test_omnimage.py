@@ -57,11 +57,11 @@ def test_split(samples):
 @pytest.mark.parametrize("samples", [20, 100])
 def test_sampler_class(samples):
     mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
-    sampler = Sampler(mmdataset)
+    sampler = Sampler(mmdataset, nsamples_per_class=samples)
     print(sampler)
 
-    N = 20
     for _ in range(10):
+        N = np.random.randint(1,samples)
         ims, labels = sampler.sample_class(N=N)
         assert ims.shape == (N, 3, 84, 84)
         assert labels.shape == (N,)
@@ -72,11 +72,11 @@ def test_sampler_class(samples):
 @pytest.mark.parametrize("samples", [20, 100])
 def test_sampler_random(samples):
     mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=samples)
-
-    sampler = Sampler(mmdataset)
+    sampler = Sampler(mmdataset, nsamples_per_class=samples)
     print(sampler)
 
-    N = 64
-    ims, labels = sampler.sample_random(N=N)
-    assert ims.shape == (N, 3, 84, 84)
-    assert len(labels) == N
+    for _ in range(10):
+        N = np.random.randint(8,64)
+        ims, labels = sampler.sample_random(N=N)
+        assert ims.shape == (N, 3, 84, 84)
+        assert len(labels) == N
