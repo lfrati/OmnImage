@@ -1,3 +1,4 @@
+import json
 import mimetypes
 import os
 from pathlib import Path
@@ -8,7 +9,7 @@ from tqdm import trange
 import numpy as np
 import torch
 from torch.utils.data import Dataset, Subset
-from torchvision.io import read_image
+from torchvision.io import read_image, ImageReadMode
 from torchvision.transforms import Normalize
 
 from .download import download_dataset
@@ -35,15 +36,21 @@ def get_images(path):
 
 class OmnImageDataset(Dataset):
     def __init__(
-        self, data_dir, samples=20, normalize=True, device="cpu", memoize=False
+        self, data_dir, samples=20, greyscale=False, normalize=True, device="cpu", download=True, memoize=False
     ):
         self.data_dir = data_dir
         self.img_dir = f"{data_dir}/OmnImage84_{samples}"
         if not Path(self.img_dir).exists():
-            download_dataset(samples=samples, download_root=data_dir)
-        else:
+            if download:
+                download_dataset(samples=samples, download_root=data_dir)
+            else:
+                raise RuntimeError(f"Dataset not found or corrupted: {self.img_dir}. You can use download=True to"
+                                   " download it.")
+        elif download:
             print(f"Found {self.img_dir}. Skipping download.")
         get_class = lambda x: x.parent.name
+        self.greyscale = greyscale
+        self.read_mode = ImageReadMode.GRAY if greyscale else ImageReadMode.UNCHANGED
         self.normalize = normalize
         # means and std computed from the 100 version
         self.transform = Normalize(
@@ -69,7 +76,7 @@ class OmnImageDataset(Dataset):
         return len(self.images)
 
     def _get(self, idx):
-        image = read_image(self.images[idx]) / 255
+        image = read_image(self.images[idx], self.read_mode) / 255
         label = self.labels[idx]
         image = image.to(self.device)
         label = torch.tensor(label).to(self.device)
@@ -126,6 +133,12 @@ def split(dataset, p=0.8, samples=20, seed=None):
         train_classes,
         test_classes,
     )
+
+
+def get_test_classes():
+    root_folder = Path(__file__).resolve().parent.parent.parent
+    with open(root_folder / "test_class_names.json") as f:
+        return frozenset(json.load(f))
 
 
 def is_sorted(l):
