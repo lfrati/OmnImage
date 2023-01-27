@@ -1,12 +1,15 @@
-from omnimage import MemmapDataset, Sampler, OmnImageDataset, store_memmap
-from torch.utils.data import DataLoader
-from tqdm import tqdm
+from random import shuffle
 
+import matplotlib.pyplot as plt
 import numpy as np
+import torch
+import torch.nn as nn
+import torchvision
+from torch.utils.data import DataLoader, Subset
+from torchvision.transforms import Compose, Lambda, Normalize, Resize, ToTensor
+from tqdm import tqdm, trange
 
-# from time import time
-# from numba import cuda, njit, prange
-# from utils import flatten
+from omnimage import MemmapDataset, OmnImageDataset, Sampler, split, store_memmap
 
 ####################################
 ######## COMPUTE DISTANCES #########
@@ -86,35 +89,6 @@ def test_distances(distances, ntasks, train_samples, class_size, tot_classes):
     return accuracy
 
 
-#%%
-
-import torch
-
-#%%
-
-NSAMPLES = 20
-DOWNLOAD_LOC = "./data"
-MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{NSAMPLES}.dat"
-dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=NSAMPLES)
-store_memmap(MMAP_FILE, dataset)
-mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=NSAMPLES)
-sampler = Sampler(mmdataset, nsamples_per_class=NSAMPLES)
-print(sampler)
-
-# for _ in range(10):
-#     N = np.random.randint(1, NSAMPLES)
-#     ims, labels = sampler.sample_class(N=N)
-#     assert ims.shape == (N, 3, 84, 84)
-#     assert labels.shape == (N,)
-#     unique_labels = set([l.item() for l in labels])
-#     assert len(unique_labels) == 1
-
-#%%
-
-import matplotlib.pyplot as plt
-import torchvision
-
-
 class DeNormalize(torchvision.transforms.Normalize):
     """
     Undoes the normalization and returns the reconstructed images in the input domain.
@@ -131,31 +105,19 @@ class DeNormalize(torchvision.transforms.Normalize):
         return super().__call__(tensor.clone())
 
 
-denorm = DeNormalize(mean=dataset.transform.mean, std=dataset.transform.std)
+class Memo(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        super().__init__()
+        self.dataset = dataset
+        self.memo = {}
 
-ims, labels = sampler.sample_class(N=NSAMPLES)
+    def __len__(self):
+        return self.dataset.__len__()
 
-# plt.imshow(denorm(ims[0]).numpy().transpose(1, 2, 0))
-# plt.show()
-
-#%%
-
-from torchvision.transforms import Compose, ToTensor, Resize, Normalize, Lambda
-
-transf = Compose(
-    [
-        ToTensor(),
-        Resize(84),
-        Normalize(mean=0.13066, std=0.30131),
-        Lambda(lambda x: x.expand(3, -1, -1)),
-    ]
-)
-omniglot = torchvision.datasets.Omniglot(root=DOWNLOAD_LOC, transform=transf)
-
-
-#%%
-
-import torch.nn as nn
+    def __getitem__(self, i):
+        if i not in self.memo:
+            self.memo[i] = self.dataset.__getitem__(i)
+        return self.memo[i]
 
 
 class Conv4(nn.Module):
@@ -195,13 +157,6 @@ class Conv4(nn.Module):
         return x
 
 
-# net = Conv4().cuda()
-net = torch.jit.script(Conv4().cuda())
-net.eval()
-
-out = net(ims.cuda())
-print(out.shape)
-
 #%%
 
 
@@ -214,36 +169,146 @@ def extract_features(dataset, model, device="cuda"):
     return np.vstack(features)
 
 
-features = extract_features(dataset, net)
+def knn_test(dataset, model, device="cuda"):
+    features = extract_features(dataset, model, device)
+    distances = pairwise_cosine(features)
 
-distances = pairwise_cosine(features)
+    name = dataset.__class__.__name__
+    if name == "Memo":
+        name = dataset.dataset.__class__.__name__
+
+    print(name, ":")
+    results = []
+    for i in [50, 100, 200, 300]:
+        acc = test_distances(
+            distances,
+            ntasks=i,
+            train_samples=NSAMPLES - 5,
+            class_size=NSAMPLES,
+            tot_classes=300,
+        )
+        results.append((i, acc))
+
+    return results
+
 
 #%%
 
-
-test_distances(
-    distances,
-    ntasks=100,
-    train_samples=NSAMPLES - 5,
-    class_size=NSAMPLES,
-    tot_classes=1000,
+transf = Compose(
+    [
+        ToTensor(),
+        Resize(84),
+        Normalize(mean=0.13066, std=0.30131),
+        Lambda(lambda x: x.expand(3, -1, -1)),
+    ]
 )
-
-#%%
-
-features = extract_features(omniglot, net)
-distances = pairwise_cosine(features)
-
-test_distances(
-    distances,
-    ntasks=600,
-    train_samples=NSAMPLES - 5,
-    class_size=NSAMPLES,
-    tot_classes=963,
+omniglot_train = Memo(
+    torchvision.datasets.Omniglot(root=DOWNLOAD_LOC, transform=transf, background=False)
 )
-
-#%%
+omniglot_test = Memo(
+    torchvision.datasets.Omniglot(root=DOWNLOAD_LOC, transform=transf, background=True)
+)
 
 """
 ToDo: iid train on omniglot/omnimage and compare knn performance
 """
+
+## this splits each class into train/test, I need to splits classes themselves
+# train, test, train_classes, test_classes = split(dataset, p=0.8, samples=20, seed=4)
+
+
+def meta_split(dataset, uniq_classes):
+    classes = list(range(len(uniq_classes)))
+    shuffle(classes)
+    train_classes = set(classes[:700])
+    test_classes = set(classes[700:])
+
+    train_idxs = []
+    test_idxs = []
+    for i, (im, cls) in tqdm(enumerate(dataset)):
+        if cls.item() in train_classes:
+            train_idxs.append(i)
+        else:
+            test_idxs.append(i)
+
+    train_idxs = sorted(train_idxs)
+    test_idxs = sorted(test_idxs)
+
+    return Subset(dataset, train_idxs), Subset(dataset, test_idxs)
+
+
+omnimage_train, omnimage_test = meta_split(dataset, dataset.uniq_classes)
+omnimage_train = Memo(omnimage_train)
+
+#%%
+
+from torch.nn.functional import cross_entropy
+from torch.optim import Adam
+
+
+def train(model, dataset, its, bsize=64, lr=1e-4, device="cuda"):
+    loader = DataLoader(dataset, batch_size=bsize, shuffle=True)
+
+    net = torch.jit.script(model.to(device))
+    net.train()
+
+    optim = torch.optim.Adam(net.parameters(), lr=lr)
+
+    pbar = trange(its)
+
+    for it in pbar:
+        avg_loss = 0
+        for i, (ims, targets) in enumerate(loader):
+            optim.zero_grad()
+            out = net(ims.to(device))
+            loss = cross_entropy(out, targets.to(device))
+            avg_loss += loss.item()
+            pbar.set_description(f"{avg_loss/(i+1):.5f}")
+            loss.backward()
+            optim.step()
+    return net
+
+
+pretrained_omniglot = train(Conv4(), omniglot_train, 10)
+torch.jit.save(pretrained_omniglot, "pretrained_omniglot.pt")
+
+pretrained_omnimage = train(Conv4(), omnimage_train, 15)
+torch.jit.save(pretrained_omnimage, "pretrained_omnimage.pt")
+
+#%%
+
+
+# denorm = DeNormalize(mean=dataset.transform.mean, std=dataset.transform.std)
+# ims, labels = sampler.sample_class(N=NSAMPLES)
+# plt.imshow(denorm(ims[0]).numpy().transpose(1, 2, 0))
+# plt.show()
+
+
+NSAMPLES = 20
+DOWNLOAD_LOC = "./data"
+MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{NSAMPLES}.dat"
+dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=NSAMPLES)
+store_memmap(MMAP_FILE, dataset)
+mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=NSAMPLES)
+# sampler = Sampler(mmdataset, nsamples_per_class=NSAMPLES)
+# print(sampler)
+
+# for _ in range(10):
+#     N = np.random.randint(1, NSAMPLES)
+#     ims, labels = sampler.sample_class(N=N)
+#     assert ims.shape == (N, 3, 84, 84)
+#     assert labels.shape == (N,)
+#     unique_labels = set([l.item() for l in labels])
+#     assert len(unique_labels) == 1
+
+# net = Conv4().cuda()
+net = torch.jit.script(Conv4().cuda())
+net.eval()
+
+knn_test(omnimage_test, torch.jit.load("pretrained_omnimage.pt"))
+
+knn_test(omniglot_test, torch.jit.load("pretrained_omniglot.pt"))
+
+# knn_test(dataset, net)
+# knn_test(mmdataset, net)
+# knn_test(omniglot, net)
