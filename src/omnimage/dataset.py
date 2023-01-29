@@ -135,9 +135,26 @@ def split(dataset, p=0.8, samples=20, seed=None):
     )
 
 
-def get_test_classes():
+def get_random_test_classes(dataset, num_test_classes=300, seed=None):
+    # Choose a random subset of N classes for testing.
+    # labels is a list of ints
+    rng = random.Random(seed)
+    # classes is a list of unique strings.
+    classes = list(dataset.uniq_classes)
+    rng.shuffle(classes)
+    test_classes = sorted(classes[:num_test_classes])
+    return frozenset(test_classes)
+
+
+def get_fixed_random_test_classes():
     root_folder = Path(__file__).resolve().parent.parent.parent
-    with open(root_folder / "test_class_names.json") as f:
+    with open(root_folder / "random_test_class_names.json") as f:
+        return frozenset(json.load(f))
+
+
+def get_evolved_test_classes():
+    root_folder = Path(__file__).resolve().parent.parent.parent
+    with open(root_folder / "evolved_test_class_names.json") as f:
         return frozenset(json.load(f))
 
 
