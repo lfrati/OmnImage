@@ -1,15 +1,25 @@
-from random import shuffle
+import os
+import random
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
 import torchvision
+from torch.nn.functional import cross_entropy
+from torch.optim import Adam
 from torch.utils.data import DataLoader, Subset
 from torchvision.transforms import Compose, Lambda, Normalize, Resize, ToTensor
 from tqdm import tqdm, trange
 
 from omnimage import MemmapDataset, OmnImageDataset, Sampler, split, store_memmap
+
+NSAMPLES = 20
+DOWNLOAD_LOC = "./data"
+MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{NSAMPLES}.dat"
 
 ####################################
 ######## COMPUTE DISTANCES #########
@@ -157,9 +167,6 @@ class Conv4(nn.Module):
         return x
 
 
-#%%
-
-
 def extract_features(dataset, model, device="cuda"):
     loader = DataLoader(dataset, batch_size=256, shuffle=False)
     with torch.no_grad():
@@ -170,6 +177,7 @@ def extract_features(dataset, model, device="cuda"):
 
 
 def knn_test(dataset, model, device="cuda"):
+    model = model.to(device)
     features = extract_features(dataset, model, device)
     distances = pairwise_cosine(features)
 
@@ -177,7 +185,7 @@ def knn_test(dataset, model, device="cuda"):
     if name == "Memo":
         name = dataset.dataset.__class__.__name__
 
-    print(name, ":")
+    # print(name, ":")
     results = []
     for i in [50, 100, 200, 300]:
         acc = test_distances(
@@ -216,10 +224,13 @@ ToDo: iid train on omniglot/omnimage and compare knn performance
 ## this splits each class into train/test, I need to splits classes themselves
 # train, test, train_classes, test_classes = split(dataset, p=0.8, samples=20, seed=4)
 
+import random
 
-def meta_split(dataset, uniq_classes):
+
+def meta_split(dataset, uniq_classes, seed=4):
+    random.seed(seed)
     classes = list(range(len(uniq_classes)))
-    shuffle(classes)
+    random.shuffle(classes)
     train_classes = set(classes[:700])
     test_classes = set(classes[700:])
 
@@ -237,13 +248,16 @@ def meta_split(dataset, uniq_classes):
     return Subset(dataset, train_idxs), Subset(dataset, test_idxs)
 
 
+dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=NSAMPLES)
+store_memmap(MMAP_FILE, dataset)
+mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=NSAMPLES)
+# sampler = Sampler(mmdataset, nsamples_per_class=NSAMPLES)
+# print(sampler)
+
 omnimage_train, omnimage_test = meta_split(dataset, dataset.uniq_classes)
 omnimage_train = Memo(omnimage_train)
 
 #%%
-
-from torch.nn.functional import cross_entropy
-from torch.optim import Adam
 
 
 def train(model, dataset, its, bsize=64, lr=1e-4, device="cuda"):
@@ -284,15 +298,6 @@ torch.jit.save(pretrained_omnimage, "pretrained_omnimage.pt")
 # plt.show()
 
 
-NSAMPLES = 20
-DOWNLOAD_LOC = "./data"
-MMAP_FILE = f"{DOWNLOAD_LOC}/mmap_OmnImage84_{NSAMPLES}.dat"
-dataset = OmnImageDataset(data_dir=DOWNLOAD_LOC, samples=NSAMPLES)
-store_memmap(MMAP_FILE, dataset)
-mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=NSAMPLES)
-# sampler = Sampler(mmdataset, nsamples_per_class=NSAMPLES)
-# print(sampler)
-
 # for _ in range(10):
 #     N = np.random.randint(1, NSAMPLES)
 #     ims, labels = sampler.sample_class(N=N)
@@ -301,14 +306,136 @@ mmdataset = MemmapDataset(folder=DOWNLOAD_LOC, samples=NSAMPLES)
 #     unique_labels = set([l.item() for l in labels])
 #     assert len(unique_labels) == 1
 
-# net = Conv4().cuda()
-net = torch.jit.script(Conv4().cuda())
-net.eval()
+# net = torch.jit.script(Conv4().cuda())
+# net.eval()
 
-knn_test(omnimage_test, torch.jit.load("pretrained_omnimage.pt"))
+data = {
+    "image_untrained": knn_test(omnimage_test, Conv4()),
+    "image_pretrained": knn_test(
+        omnimage_test, torch.jit.load("pretrained_omnimage.pt")
+    ),
+    "glot_untrained": knn_test(omniglot_test, Conv4()),
+    "glot_pretrained": knn_test(
+        omniglot_test, torch.jit.load("pretrained_omniglot.pt")
+    ),
+}
+print(data)
 
-knn_test(omniglot_test, torch.jit.load("pretrained_omniglot.pt"))
+#%%
 
-# knn_test(dataset, net)
-# knn_test(mmdataset, net)
-# knn_test(omniglot, net)
+import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
+
+
+def unzip(l):
+    return list(zip(*l))
+
+
+# data = {
+#     "image_untrained": [
+#         (50, 0.376),
+#         (100, 0.296),
+#         (200, 0.229),
+#         (300, 0.17533333333333334),
+#     ],
+#     "image_pretrained": [(50, 0.62), (100, 0.546), (200, 0.451), (300, 0.368)],
+#     "glot_untrained": [
+#         (50, 0.696),
+#         (100, 0.692),
+#         (200, 0.592),
+#         (300, 0.5006666666666667),
+#     ],
+#     "glot_pretrained": [
+#         (50, 0.916),
+#         (100, 0.858),
+#         (200, 0.771),
+#         (300, 0.7513333333333333),
+#     ],
+# }
+
+xs, ys = unzip(data["glot_pretrained"])
+plt.plot(xs, ys, ".-", label="OmniGlot pretrained", color="C2")
+xs, ys = unzip(data["glot_untrained"])
+plt.plot(xs, ys, ".--", label="OmniGlot", color="C2")
+xs, ys = unzip(data["image_pretrained"])
+plt.plot(xs, ys, ".-", label="OmnImage pretrained", color="C3")
+xs, ys = unzip(data["image_untrained"])
+plt.plot(xs, ys, ".--", label="OmnImage", color="C3")
+plt.legend()
+plt.xlabel("# Tasks", fontsize=14)
+plt.ylabel("KNN Accuracy", fontsize=14)
+plt.ylim(0, 1)
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#%%
+
+from pathlib import Path
+from torch.utils.data import Dataset
+from torchvision.io import read_image
+
+
+class Imagenet84Dataset(Dataset):
+    def __init__(self, images, labels, transform=None, target_transform=None):
+        assert len(labels) == len(images), f"{len(labels)=} != {len(images)=}"
+        self.labels = labels
+        self.images = images
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        img_path = self.images[idx]
+        image = read_image(img_path) / 255.0
+        label = self.labels[idx]
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return image, label
+
+
+imagenet84_folder = Path("/home/Storage/data_dungeon/image_data/ImageNet84/")
+
+
+def sample_class(cls_idxs: list[int], cls_names: list[str], loc: Path, nsamples: int):
+    samples = []
+    labels = []
+    for cls_idx in tqdm(cls_idxs):
+        cls_name = cls_names[cls_idx]
+        cls_folder = loc / cls_name
+        # sort to make the shuffle deterministic
+        ims = sorted(cls_folder.iterdir())
+        assert nsamples < len(ims)
+        random.shuffle(ims)
+        ims = [im.as_posix() for im in ims[:nsamples]]
+        samples.extend(ims)
+        labels.extend([cls_idx for _ in range(nsamples)])
+    return samples, labels
+
+
+def meta_sample_imagenet(loc: Path, nsamples=20, seed=4):
+
+    cls_names = sorted([cls.name for cls in loc.iterdir()])
+    random.seed(seed)
+    cls_idxs = list(range(len(cls_names)))
+    random.shuffle(cls_idxs)
+
+    train_idxs = set(cls_idxs[:700])
+    test_idxs = set(cls_idxs[700:])
+
+    train_samples, train_labels = sample_class(train_idxs, cls_names, loc, nsamples)
+    test_samples, test_labels = sample_class(test_idxs, cls_names, loc, nsamples)
+    train = Imagenet84Dataset(train_samples, train_labels)
+    test = Imagenet84Dataset(test_samples, test_labels)
+
+    return train, test
+
+
+train84, test84 = meta_sample_imagenet(imagenet84_folder)
