@@ -323,57 +323,6 @@ print(data)
 
 #%%
 
-import matplotlib.pyplot as plt
-import matplotlib
-
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["ps.fonttype"] = 42
-
-
-def unzip(l):
-    return list(zip(*l))
-
-
-# data = {
-#     "image_untrained": [
-#         (50, 0.376),
-#         (100, 0.296),
-#         (200, 0.229),
-#         (300, 0.17533333333333334),
-#     ],
-#     "image_pretrained": [(50, 0.62), (100, 0.546), (200, 0.451), (300, 0.368)],
-#     "glot_untrained": [
-#         (50, 0.696),
-#         (100, 0.692),
-#         (200, 0.592),
-#         (300, 0.5006666666666667),
-#     ],
-#     "glot_pretrained": [
-#         (50, 0.916),
-#         (100, 0.858),
-#         (200, 0.771),
-#         (300, 0.7513333333333333),
-#     ],
-# }
-
-xs, ys = unzip(data["glot_pretrained"])
-plt.plot(xs, ys, ".-", label="OmniGlot pretrained", color="C2")
-xs, ys = unzip(data["glot_untrained"])
-plt.plot(xs, ys, ".--", label="OmniGlot", color="C2")
-xs, ys = unzip(data["image_pretrained"])
-plt.plot(xs, ys, ".-", label="OmnImage pretrained", color="C3")
-xs, ys = unzip(data["image_untrained"])
-plt.plot(xs, ys, ".--", label="OmnImage", color="C3")
-plt.legend()
-plt.xlabel("# Tasks", fontsize=14)
-plt.ylabel("KNN Accuracy", fontsize=14)
-plt.ylim(0, 1)
-plt.grid()
-plt.tight_layout()
-plt.show()
-
-#%%
-
 from pathlib import Path
 from torch.utils.data import Dataset
 from torchvision.io import read_image
@@ -432,10 +381,143 @@ def meta_sample_imagenet(loc: Path, nsamples=20, seed=4):
 
     train_samples, train_labels = sample_class(train_idxs, cls_names, loc, nsamples)
     test_samples, test_labels = sample_class(test_idxs, cls_names, loc, nsamples)
-    train = Imagenet84Dataset(train_samples, train_labels)
-    test = Imagenet84Dataset(test_samples, test_labels)
+
+    transf = Normalize(
+        mean=[0.48261318, 0.45887598, 0.4111194],
+        std=[0.2710958, 0.26436415, 0.27893084],
+    )
+
+    train = Imagenet84Dataset(train_samples, train_labels, transform=transf)
+    test = Imagenet84Dataset(test_samples, test_labels, transform=transf)
 
     return train, test
 
 
 train84, test84 = meta_sample_imagenet(imagenet84_folder)
+
+
+# def means_stds():
+#     ims = np.array([train84[i][0].numpy() for i in range(len(train84))])
+#     print(np.mean(ims, axis=(0, 2, 3)))
+#     print(np.std(ims, axis=(0, 2, 3)))
+# means_stds()
+
+#%%
+
+# random_pretrained_omnimage = train(Conv4(), train84, 20)
+# torch.jit.save(random_pretrained_omnimage, "random_pretrained_omnimage.pt")
+
+NREPS = 20
+
+data = {
+    "image_untrained": [knn_test(omnimage_test, Conv4()) for _ in range(NREPS)],
+    "image_pretrained": [
+        knn_test(omnimage_test, torch.jit.load("pretrained_omnimage.pt"))
+        for _ in range(NREPS)
+    ],
+    "glot_untrained": [knn_test(omniglot_test, Conv4()) for _ in range(NREPS)],
+    "glot_pretrained": [
+        knn_test(omniglot_test, torch.jit.load("pretrained_omniglot.pt"))
+        for _ in range(NREPS)
+    ],
+    "image_random_untrained": [knn_test(test84, Conv4()) for _ in range(NREPS)],
+    "image_random_pretrained": [
+        knn_test(test84, torch.jit.load("random_pretrained_omnimage.pt"))
+        for _ in range(NREPS)
+    ],
+}
+
+
+import json
+
+with open("transfer.json", "w") as f:
+    f.write(json.dumps(data))
+
+#%%
+
+import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
+
+
+def unzip(l):
+    return list(zip(*l))
+
+
+def CI(xs, conf=0.95):
+    from scipy.stats import t
+
+    # The king of speed, is biased estimator so bad?
+    # xs : [N, samples]
+    m = xs.mean(axis=1)
+    s = xs.std(axis=1)
+    S = xs.shape[1]  # sample size
+    dof = S - 1
+    t_crit = np.abs(t.ppf((1 - conf) / 2, dof))
+    r = s * t_crit / np.sqrt(S)
+    return (m - r, m + r)
+
+
+def process(repeats, marker, label, ax, color):
+    ys = np.array([unzip(res)[1] for res in repeats])
+    xs = unzip(repeats[0])[0]
+    mean = np.mean(ys, axis=0)
+    upper, lower = CI(ys.T)
+    ax.plot(xs, mean, marker, label=label, color=color)
+    ax.fill_between(xs, upper, lower, alpha=0.2, color=color)
+
+
+fig, ax = plt.subplots(figsize=(8, 8))
+process(
+    data["glot_pretrained"], marker=".-", label="OmniGlot pretrained", color="C0", ax=ax
+)
+process(data["glot_untrained"], marker=".--", label="OmniGlot", color="C0", ax=ax)
+
+process(
+    data["image_pretrained"],
+    marker=".-",
+    label="OmnImage pretrained",
+    color="C1",
+    ax=ax,
+)
+process(data["image_untrained"], marker=".--", label="OmnImage", color="C1", ax=ax)
+
+process(
+    data["image_random_pretrained"],
+    marker=".-",
+    label="ImageNet84 pretrained",
+    color="C2",
+    ax=ax,
+)
+process(
+    data["image_random_untrained"], marker=".--", label="ImageNet84", color="C2", ax=ax
+)
+plt.grid()
+plt.legend()
+plt.xlabel("# Tasks", fontsize=14)
+plt.ylabel("KNN Accuracy", fontsize=14)
+plt.ylim(0, 1)
+plt.title("KNN learnability/transfer in the 20 images regime")
+plt.tight_layout()
+plt.savefig("knn_transfer.png")
+plt.close()
+
+
+#%%
+
+
+cross_data = {
+    "image_pretrained_glot": [
+        knn_test(omnimage_test, torch.jit.load("pretrained_omniglot.pt"))
+        for _ in range(NREPS)
+    ],
+    "glot_pretrained_image": [
+        knn_test(omniglot_test, torch.jit.load("pretrained_omnimage.pt"))
+        for _ in range(NREPS)
+    ],
+}
+
+with open("cross_transfer.json", "w") as f:
+    f.write(json.dumps(data))
