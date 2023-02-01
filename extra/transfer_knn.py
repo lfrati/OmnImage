@@ -460,13 +460,14 @@ def CI(xs, conf=0.95):
     return (m - r, m + r)
 
 
-def process(repeats, marker, label, ax, color):
+def process(repeats, marker, label, color, ax, ci=True):
     ys = np.array([unzip(res)[1] for res in repeats])
     xs = unzip(repeats[0])[0]
     mean = np.mean(ys, axis=0)
-    upper, lower = CI(ys.T)
     ax.plot(xs, mean, marker, label=label, color=color)
-    ax.fill_between(xs, upper, lower, alpha=0.2, color=color)
+    if ci:
+        upper, lower = CI(ys.T)
+        ax.fill_between(xs, upper, lower, alpha=0.2, color=color)
 
 
 fig, ax = plt.subplots(figsize=(8, 8))
@@ -487,12 +488,16 @@ process(data["image_untrained"], marker=".--", label="OmnImage", color="C1", ax=
 process(
     data["image_random_pretrained"],
     marker=".-",
-    label="ImageNet84 pretrained",
+    label="rand-ImageNet pretrained",
     color="C2",
     ax=ax,
 )
 process(
-    data["image_random_untrained"], marker=".--", label="ImageNet84", color="C2", ax=ax
+    data["image_random_untrained"],
+    marker=".--",
+    label="rand-ImageNet",
+    color="C2",
+    ax=ax,
 )
 plt.grid()
 plt.legend()
@@ -517,7 +522,106 @@ cross_data = {
         knn_test(omniglot_test, torch.jit.load("pretrained_omnimage.pt"))
         for _ in range(NREPS)
     ],
+    "image_pretrained_random": [
+        knn_test(omnimage_test, torch.jit.load("random_pretrained_omnimage.pt"))
+        for _ in range(NREPS)
+    ],
+    "random_pretrained_image": [
+        knn_test(test84, torch.jit.load("pretrained_omnimage.pt")) for _ in range(NREPS)
+    ],
 }
 
+
+# cross_data["image_pretrained_random"] = [
+#     knn_test(omnimage_test, torch.jit.load("random_pretrained_omnimage.pt"))
+#     for _ in range(NREPS)
+# ]
+
 with open("cross_transfer.json", "w") as f:
-    f.write(json.dumps(data))
+    f.write(json.dumps(cross_data))
+
+#%%
+
+
+fig, ax = plt.subplots(figsize=(8, 8))
+process(
+    data["glot_pretrained"],
+    marker=".-",
+    label="OmniGlot pretrained",
+    color="C0",
+    ax=ax,
+)
+process(data["glot_untrained"], marker=".--", label="", color="gray", ax=ax, ci=False)
+process(
+    cross_data["glot_pretrained_image"],
+    marker=".--",
+    label="OmnImage train$\\rightarrow$ OmniGlot test",
+    color="C0",
+    ax=ax,
+)
+process(
+    data["image_pretrained"],
+    marker=".-",
+    label="OmnImage pretrained",
+    color="C1",
+    ax=ax,
+)
+process(
+    cross_data["image_pretrained_glot"],
+    marker=".--",
+    label="OmniGlot train $\\rightarrow$ OmnImage test",
+    color="C1",
+    ax=ax,
+)
+process(
+    cross_data["image_pretrained_random"],
+    marker=".--",
+    label="rand-ImageNet train $\\rightarrow$ OmnImage test",
+    color="C2",
+    ax=ax,
+)
+process(data["image_untrained"], marker=".--", label="", color="gray", ax=ax, ci=False)
+plt.grid()
+plt.legend()
+plt.xlabel("# Tasks", fontsize=14)
+plt.ylabel("KNN Accuracy", fontsize=14)
+plt.ylim(0, 1)
+plt.title("KNN o.o.d. transfer in the 20 images regime")
+plt.tight_layout()
+plt.savefig("cross_knn_transfer.png")
+plt.close()
+
+#%%
+
+fig, ax = plt.subplots(figsize=(8, 8))
+process(
+    cross_data["random_pretrained_image"],
+    marker=".--",
+    label="OmnImage train $\\rightarrow$ rand-ImageNet test",
+    color="C1",
+    ax=ax,
+)
+process(
+    data["image_random_pretrained"],
+    marker=".-",
+    label="rand-ImageNet pretrained",
+    color="C2",
+    ax=ax,
+)
+process(
+    data["image_random_untrained"],
+    marker=".--",
+    label="rand-ImageNet",
+    color="gray",
+    ci=False,
+    ax=ax,
+)
+plt.grid()
+plt.legend()
+plt.xlabel("# Tasks", fontsize=14)
+plt.ylabel("KNN Accuracy", fontsize=14)
+# plt.ylim(0, 0.4)
+plt.title("KNN o.o.d. transfer in the 20 images regime")
+plt.tight_layout()
+plt.savefig("cross_knn_transfer_images.png")
+plt.close()
