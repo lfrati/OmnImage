@@ -25,9 +25,9 @@ Solution: - Read the uint32 shape to float32 format (don't convert, just read th
 
 HEADERBYTES = 16
 
-CHW = "np.dtype[np.float32]"
-FourD = tuple[int, int, int, int]
-NDArrayNCHW = "np.ndarray[FourD, CHW]"
+# CHW = "np.dtype[np.float32]"
+# FourD = tuple[int, int, int, int]
+# NDArrayNCHW = "np.ndarray[FourD, CHW]"
 
 
 def store_memmap(path: str, dataset: Dataset) -> None:
@@ -55,7 +55,7 @@ def store_memmap(path: str, dataset: Dataset) -> None:
     mmfp.flush()
 
 
-def retrieve_memmap(path: str) -> NDArrayNCHW:
+def retrieve_memmap(path: str): # -> NDArrayNCHW:
     retrieved = np.memmap(path, dtype="float32", mode="r+")
     retrieved_float_shape = retrieved[:4]
     int_shape = tuple(np.frombuffer(retrieved_float_shape.tobytes(), dtype=np.uint32))
