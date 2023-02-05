@@ -3,11 +3,17 @@ from os.path import join
 from pathlib import Path
 import pickle
 import sys
+from typing import List
 
 import numpy as np
 
 from subpair import extract, pairwise_cosine
-from utils import read_folder
+
+
+def read_folder(folder: Path) -> List[Path]:
+    if isinstance(folder, str):
+        folder = Path(folder)
+    return sorted(folder.iterdir())
 
 
 def existing_dir(arg):
