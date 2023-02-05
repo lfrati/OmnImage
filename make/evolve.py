@@ -53,10 +53,11 @@ def main(args=None):
     args = parser.parse_args(args)
     print(args)
     im_folder = args.ims
-    hist_folder = Path("output/hist")
+    out_folder = Path(f"output_{args.samples}")
+    hist_folder = out_folder / "hist"
     hist_folder.mkdir(parents=True, exist_ok=True)
 
-    with open(f"output/OmnImage_{args.samples}.txt", "w") as output_file:
+    with open(out_folder / f"OmnImage_{args.samples}.txt", "w") as output_file:
         for f in args.feats.iterdir():
             cls = f.stem
             print(f"Processing class {cls}")
