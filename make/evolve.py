@@ -2,6 +2,7 @@ import argparse
 from os.path import join
 from pathlib import Path
 import pickle
+import sys
 
 import numpy as np
 
@@ -9,18 +10,25 @@ from subpair import extract, pairwise_cosine
 from utils import read_folder
 
 
-def main():
+def existing_dir(arg):
+    path = Path(arg).resolve()
+    if not path.is_dir():
+        raise argparse.ArgumentError(f"Not a valid directory: {arg} ({path})")
+    return path
+
+
+def main(args=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--ims",
-        type=str,
+        type=existing_dir,
         default="imagenet",
         help="path to folder w/ imagenet data",
     )
     parser.add_argument(
         "--feats",
-        type=str,
+        type=existing_dir,
         help="path to folder w/ extracted features",
     )
     parser.add_argument(
@@ -36,14 +44,14 @@ def main():
         help="How many iterations to run the evolutionary algorithm for",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     print(args)
-    im_folder = Path(args.ims)
+    im_folder = args.ims
     hist_folder = Path("output/hist")
-    hist_folder.mkdir(exist_ok=True)
+    hist_folder.mkdir(parents=True, exist_ok=True)
 
     with open(f"output/OmnImage_{args.samples}.txt", "w") as output_file:
-        for f in Path(args.feats).iterdir():
+        for f in args.feats.iterdir():
             cls = f.stem
             print(f"Processing class {cls}")
             folder = read_folder(im_folder / cls)
@@ -65,4 +73,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
