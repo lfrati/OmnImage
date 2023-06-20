@@ -13,20 +13,6 @@ from torchvision.transforms import functional as fn
 from tqdm import tqdm
 
 
-# src = "/gpfs2/scratch/lfrati/ImageNet21k/winter21_whole"
-# done = "/gpfs2/scratch/lfrati/ImageNet21k/winter21_84"
-# all_tars = sorted(list(Path(src).iterdir()))
-# done_tars = sorted(list(Path(done).iterdir()))
-# all_tars = set([tar.name for tar in all_tars])
-# done = set([tar.name for tar in done_tars])
-# left = all_tars - done
-# with open("tars.txt", "w") as f:
-#     for name in left:
-#         f.write(f"--file={name}\n")
-
-# %%
-
-
 def hook_it_up(net, layer):
     activations = None
 
@@ -50,7 +36,7 @@ if __name__ == "__main__":
     DATEFMT = "%Y-%m-%d %H:%M:%S"
     logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt=DATEFMT)
 
-    parser = argparse.ArgumentParser(description="Resize imagenet21k to 84x84.")
+    parser = argparse.ArgumentParser(description="Extract features from an Imagenet21k class using VGG19_BN")
     parser.add_argument(
         "--tars",
         type=str,
@@ -90,6 +76,15 @@ if __name__ == "__main__":
     for i, tar in enumerate(tars):
         # class e.g. n03592669
         cls = tar.stem
+
+        feats_path = f"{args.dest}/{cls}.npy"
+        # since some images are discarded I need to store a list of image names
+        # so that I can match features to their images
+        ims_info_path = f"{args.dest}/{cls}.txt"
+
+        if Path(ims_info_path).exists():
+            logging.warning(f"{ims_info_path} exists. Skipping {cls}")
+            continue
 
         logging.info(f"Processing class {cls}")
 
@@ -143,12 +138,8 @@ if __name__ == "__main__":
 
         feats = np.vstack(feats)  # list of N tensors (1, nfeats) -> np.array (N,nfeats)
 
-        feats_path = f"{args.dest}/{cls}.npy"
         np.save(feats_path, feats)
         logging.info(f"Numpy features stored in {feats_path}")
-        # since some images are discarded I need to store a list of image names
-        # so that I can match features to their images
-        ims_info_path = f"{args.dest}/{cls}.txt"
         with open(ims_info_path, "w") as f:
             for im_name in im_names:
                 f.write(f"{im_name}\n")
