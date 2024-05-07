@@ -8,8 +8,6 @@ certifi==2022.9.24
     # via requests
 charset-normalizer==2.1.1
     # via requests
-einops==0.6.0
-    # via omnimage (pyproject.toml)
 idna==3.4
     # via requests
 numpy==1.23.5
