@@ -110,8 +110,8 @@ def download_dataset(
     if folder_path.exists():
         print("Folder exists already.")
     else:
-        print(f"Extracting:\n  {zip_path}\nto\n  {folder_path}")
-        extract_zip(zip_path, folder_path)
+        print(f"Extracting:\n  {zip_path}\nto\n  {data_folder}")
+        extract_zip(zip_path, data_folder.as_posix())
         print("Extracted.")
 
 
